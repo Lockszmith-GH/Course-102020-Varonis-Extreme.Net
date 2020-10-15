@@ -1,4 +1,4 @@
-param([switch]$LoadFuncOnly)
+[CmdletBinding()]param([switch]$LoadFuncOnly)
 function GetGitBranchWhenNotMain {param([Switch]$FailIfBad)
     $local:remoteRepos = $(& git remote | Out-String).Trim()
     if( $remoteRepos -cnotmatch 'upstream' ) {
@@ -36,23 +36,32 @@ function performGitOperations {
     $local:currentBranch = GetGitBranchWhenNotMain -FailIfMain
     try {
         $local:stashStatus =  ( git stash list ).Count
+        Write-Verbose "git stash # Attempting to stash"
         git stash
-        if( $LastExitCode -eq 1 ) { throw "FAILED: git stash"}
+        if( $LastExitCode -eq 1 ) { throw "### FAILED: git stash"}
         $stashStatus = ( git stash list ).Count -ne $stashStatus
+        If( $stashStatus ) { Write-Verbose "# Stashed changes." } else { Write-Verbose "Nothing to satsh" }
         
+        Write-Verbose "git fetch upstream # Fetching from upstream repo"
         git fetch upstream
         if( $LastExitCode -eq 1 ) { throw "FAILED: git fetch upstream"}
+        Write-Verbose "git checkout main # switching to main branch"
         git checkout main
         if( $LastExitCode -eq 1 ) { throw "FAILED: git checkout main"}
+        Write-Verbose "git rebase upstream/main # rebasing main branch on usptream repo"
         git rebase upstream/main
         if( $LastExitCode -eq 1 ) { throw "FAILED: git rebase upstream/main"}
+        Write-Verbose "git push origin main # pushing rebased main to origin repo"
         git push origin main
         if( $LastExitCode -eq 1 ) { throw "FAILED: git push origin main"}
+        Write-Verbose "origin repo should be synced now"
     } finally {
-        git checkout gsz
+        Write-Verbose "git checkout $currentBranch # switching back to $currentBranch working branch"
+        git checkout $currentBranch
         if( $LastExitCode -eq 1 ) { throw "FAILED: git checkout gsz"}
         
         if( $stashStatus ) {
+            Write-Verbose "git stash pop # retreiving latest changes that were stashed"
             git stash pop
             if( $LastExitCode -eq 1 ) { throw "FAILED: git stash pop"}
         }
@@ -69,9 +78,6 @@ else {
     "To run this code, please run the following line
 Invoke-Expression `"function InlineFunc{`$(Invoke-WebRequest $remoteURL -UseBasicParsing)}; . InlineFunc`""
 }
-
-
-
 
 # How to LoadFunc into memory directly from file
 # Invoke-Expression "function InlineFunc{$(Get-Content .\_git_update-main-from-upstream.ps1 -raw)}; . InlineFunc -LoadFuncOnly"
