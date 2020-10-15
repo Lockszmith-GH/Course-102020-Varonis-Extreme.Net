@@ -35,8 +35,10 @@ After you switched to the other branch, run this script again."
 function performGitOperations {
     $local:currentBranch = GetGitBranchWhenNotMain -FailIfMain
     try {
+        $local:stashStatus =  ( git stash list ).Count
         git stash
         if( $LastExitCode -eq 1 ) { throw "FAILED: git stash"}
+        $stashStatus = ( git stash list ).Count -ne $stashStatus
         
         git fetch upstream
         if( $LastExitCode -eq 1 ) { throw "FAILED: git fetch upstream"}
@@ -50,8 +52,10 @@ function performGitOperations {
         git checkout gsz
         if( $LastExitCode -eq 1 ) { throw "FAILED: git checkout gsz"}
         
-        git stash pop
-        if( $LastExitCode -eq 1 ) { throw "FAILED: git stash pop"}
+        if( $stashStatus ) {
+            git stash pop
+            if( $LastExitCode -eq 1 ) { throw "FAILED: git stash pop"}
+        }
     }
 }
 
