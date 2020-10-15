@@ -60,6 +60,14 @@ function performGitOperations {
         git checkout $currentBranch
         if( $LastExitCode -eq 1 ) { throw "FAILED: git checkout gsz"}
         
+        Write-Verbose "git pull --rebase=true # rebase and pull from newly synced main version to $currentBranch working branch"
+        git pull --rebase=true
+        if( $LastExitCode -eq 1 ) { throw "FAILED: git pull --rebase=true"}
+        
+        Write-Verbose "git push origin # pushing rebased $currentBranch"
+        git push origin
+        if( $LastExitCode -eq 1 ) { throw "FAILED: git push origin"}
+        
         if( $stashStatus ) {
             Write-Verbose "git stash pop # retreiving latest changes that were stashed"
             git stash pop
